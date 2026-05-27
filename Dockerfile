@@ -1,18 +1,27 @@
+# Dockerfile.base
 FROM ubuntu:20.04
 
-RUN apt update && DEBIAN_FRONTEND=noninteractive apt install -y \
+# Cài dependencies cần thiết để chạy OpenWRT SDK
+RUN apt-get update && apt-get install -y \
     build-essential \
-    gcc-aarch64-linux-gnu \
+    gcc \
+    g++ \
     make \
-    python3.9 \
-    git
+    libncurses5-dev \
+    python3 \
+    python3-distutils \
+    rsync \
+    unzip \
+    wget \
+    file \
+    git \
+    && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
+# Copy SDK đã tải sẵn vào image
+COPY openwrt-sdk-23.05.3-bcm27xx-bcm2711_gcc-12.3.0_musl.Linux-x86_64/ /openwrt-sdk/
 
-COPY . .
+# Set PATH để dùng toolchain
+ENV PATH="/openwrt-sdk/staging_dir/toolchain-aarch64_cortex-a72_gcc-12.3.0_musl/bin:${PATH}"
+ENV STAGING_DIR="/openwrt-sdk/staging_dir"
 
-RUN make
-
-RUN make package
-
-CMD ["make", "run"]
+WORKDIR /build

@@ -1,4 +1,4 @@
-CC=aarch64-linux-gnu-gcc
+CC=/openwrt-sdk/staging_dir/toolchain-aarch64_cortex-a72_gcc-12.3.0_musl/bin/aarch64-openwrt-linux-gcc
 TARGET=check_python
 
 all:
