@@ -32,8 +32,6 @@ python-check-project/
 ├── README.md
 └── package/
     └── python-check/
-        ├── CONTROL/
-        │   └── control
         └── usr/
             └── bin/
 ```
@@ -110,7 +108,7 @@ make package  # tạo file python-check.ipk
 
 ## Đóng gói `.ipk` (mô phỏng OpenWRT)
 
-Sau khi build xong, binary được đặt vào `package/python-check/usr/bin/`. File mô tả package nằm ở `package/python-check/CONTROL/control`. Toàn bộ thư mục sau đó được nén thành `python-check.ipk`.
+Sau khi build xong, binary được đặt vào `package/python-check/usr/bin/`. Toàn bộ thư mục sau đó được nén thành `python-check.ipk`.
 
 Phần này giúp hiểu cách OpenWRT tổ chức package và quy trình đóng gói ứng dụng userspace để deploy lên thiết bị nhúng.
 
