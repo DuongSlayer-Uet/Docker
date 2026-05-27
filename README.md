@@ -158,3 +158,6 @@ Thoát với exit code khác 0.
 ## Kết luận
 
 Dự án bao quát các bước cốt lõi của một chu trình phát triển embedded Linux: biên dịch, kiểm thử, quản lý version và đóng gói. Có thể mở rộng thêm sang cross-compiling, build `.ipk` thực tế và deploy lên thiết bị OpenWRT thật.
+
+## Link github
+https://github.com/DuongSlayer-Uet/Docker/tree/feature/python-version-check
