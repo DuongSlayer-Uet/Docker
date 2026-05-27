@@ -2,9 +2,9 @@
 
 ## Giới thiệu
 
-Dự án mô phỏng quy trình phát triển một tiện ích userspace cho hệ thống Linux nhúng, cụ thể là theo hướng làm việc với OpenWRT trên Raspberry Pi 4B. Code viết bằng C, build và test trong Docker, dùng Git để quản lý version và Makefile để tự động hóa các bước build/run/clean/package.
+Dự án mô phỏng quy trình phát triển một tiện ích userspace cho hệ thống Linux nhúng, cụ thể là theo hướng làm việc với OpenWRT trên Raspberry Pi 4B. Code viết bằng C, build trong Docker sử dụng **OpenWRT SDK** với toolchain cross-compile cho kiến trúc ARM64, dùng **QEMU** để chạy mô phỏng binary trên máy host x86_64, dùng Git để quản lý version và Makefile để tự động hóa các bước build/run/clean/package.
 
-Mục tiêu chính là làm quen với quy trình phát triển trong môi trường cô lập, cách tổ chức project, quản lý branch/tag trên Git, và đóng gói ứng dụng dạng `.ipk` để mô phỏng deploy lên OpenWRT.
+Mục tiêu chính là làm quen với quy trình phát triển trong môi trường cô lập, sử dụng OpenWRT SDK/toolchain để cross-compile ứng dụng, mô phỏng thực thi binary ARM64 bằng QEMU, và đóng gói ứng dụng dạng `.ipk`.
 
 ## Mô tả bài toán
 
@@ -38,12 +38,12 @@ python-check-project/
 
 - `src/` — chứa mã nguồn C
 - `Makefile` — tự động hóa build, run, clean, package
-- `Dockerfile` — tạo môi trường build cô lập
+- `Dockerfile` — tạo môi trường build cô lập với OpenWRT SDK
 - `package/` — mô phỏng cấu trúc package OpenWRT để tạo file `.ipk`
 
 ## Yêu cầu kỹ thuật
 
-**Docker:** Build từ image tối giản, Dockerfile phải cài `gcc`, `make` và các dependency cần thiết. Toàn bộ quá trình build/run/package chạy trong container.
+**Docker:** Build từ image `openwrt-sdk-rpi4:23.05` — image tích hợp sẵn OpenWRT SDK và toolchain cross-compile cho ARM64. Dockerfile cài thêm `qemu-user-static` và `python3.9`. Toàn bộ quá trình build/package chạy trong container.
 
 **Code C:** Dùng `system()` hoặc `popen()` để gọi lệnh kiểm tra Python. Output phải in ra màn hình và ghi vào `/tmp/python_ver.log`. Nếu không tìm thấy Python 3.9 thì báo lỗi rõ và exit với trạng thái thất bại.
 
@@ -54,32 +54,62 @@ python-check-project/
 ## Dockerfile
 
 ```dockerfile
+# Dockerfile.base
 FROM ubuntu:20.04
 
-RUN apt update && DEBIAN_FRONTEND=noninteractive apt install -y \
+# Cài dependencies cần thiết để chạy OpenWRT SDK
+RUN apt-get update && apt-get install -y \
     build-essential \
-    gcc-aarch64-linux-gnu \
+    gcc \
+    g++ \
     make \
-    python3.9 \
-    git
+    libncurses5-dev \
+    python3 \
+    python3-distutils \
+    rsync \
+    unzip \
+    wget \
+    file \
+    git \
+    && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
+# Copy SDK đã tải sẵn vào image
+COPY openwrt-sdk-23.05.3-bcm27xx-bcm2711_gcc-12.3.0_musl.Linux-x86_64/ /openwrt-sdk/
 
-COPY . .
+# Set PATH để dùng toolchain
+ENV PATH="/openwrt-sdk/staging_dir/toolchain-aarch64_cortex-a72_gcc-12.3.0_musl/bin:${PATH}"
+ENV STAGING_DIR="/openwrt-sdk/staging_dir"
 
-RUN make
+WORKDIR /build
 
-RUN make package
-
-CMD ["make", "run"]
 ```
 
-- Base image `ubuntu:20.04` — môi trường ổn định, gần với embedded Linux
+- Base image `openwrt-sdk-rpi4:23.05` — tích hợp sẵn OpenWRT SDK 23.05 và toolchain `aarch64_cortex-a72_gcc-12.3.0_musl` cho Raspberry Pi 4B
 - `DEBIAN_FRONTEND=noninteractive` — tắt prompt trong quá trình `apt install` để build không bị treo
-- `gcc-aarch64-linux-gnu` — cross-compiler để build binary cho kiến trúc ARM64 (Raspberry Pi 4B)
+- `qemu-user-static` — cho phép chạy binary ARM64 trên máy host x86_64
 - `python3.9` — cài sẵn trong container để chương trình có thể detect được
 - `RUN make` và `RUN make package` — build và đóng gói ngay lúc tạo image
-- `CMD ["make", "run"]` — chạy chương trình mặc định khi container khởi động
+
+## Makefile
+
+```makefile
+CC=/openwrt-sdk/staging_dir/toolchain-aarch64_cortex-a72_gcc-12.3.0_musl/bin/aarch64-openwrt-linux-gcc
+TARGET=check_python
+
+all:
+        $(CC) src/check_python.c -o $(TARGET)
+run:
+        ./$(TARGET)
+clean:
+        rm -f $(TARGET)
+package:
+        mkdir -p package/python-check/usr/bin
+        cp $(TARGET) package/python-check/usr/bin/
+        tar -czf python-check.ipk package/
+```
+
+- `CC` trỏ trực tiếp vào cross-compiler của OpenWRT SDK bên trong container
+- Binary output là `check_python` — được cross-compile cho kiến trúc ARM64
 
 ## Hướng dẫn Docker
 
@@ -95,20 +125,42 @@ Chạy container:
 docker run -it python-check
 ```
 
-Trong container, dùng các lệnh Makefile để build và test chương trình.
-
 ## Hướng dẫn Makefile
 
 ```bash
-make          # biên dịch chương trình
+make          # biên dịch chương trình bằng OpenWRT toolchain
 make run      # chạy chương trình
 make clean    # xóa file build
 make package  # tạo file python-check.ipk
 ```
 
+## Chạy mô phỏng với QEMU
+
+Sau khi build, binary `check_python` là file ARM64 và không thể chạy trực tiếp trên máy host x86_64. Dùng `qemu-aarch64-static` kết hợp với sysroot của OpenWRT toolchain để mô phỏng:
+
+```bash
+qemu-aarch64-static \
+  -L /openwrt-sdk/staging_dir/toolchain-aarch64_cortex-a72_gcc-12.3.0_musl \
+  /app/check_python
+```
+
+- `-L` — chỉ định sysroot chứa các thư viện musl cần thiết (`ld-musl-aarch64.so.1`, ...)
+- Toolchain nằm tại `/openwrt-sdk/staging_dir/` bên trong container
+
 ## Đóng gói `.ipk` (mô phỏng OpenWRT)
 
 Sau khi build xong, binary được đặt vào `package/python-check/usr/bin/`. Toàn bộ thư mục sau đó được nén thành `python-check.ipk`.
+
+```bash
+make package
+ls -la *.ipk
+```
+
+Copy file `.ipk` về máy host:
+
+```bash
+docker cp <container_id>:/app/python-check.ipk .
+```
 
 Phần này giúp hiểu cách OpenWRT tổ chức package và quy trình đóng gói ứng dụng userspace để deploy lên thiết bị nhúng.
 
@@ -123,7 +175,7 @@ git add .
 git commit -m "Add Python version check app with Docker and Makefile"
 
 # Push
-git push origin feature/python-version-check
+git push -u origin feature/python-version-check
 
 # Gắn tag release
 git tag v1.0-python-check
@@ -151,13 +203,15 @@ Thoát với exit code khác 0.
 ## Mục tiêu học tập
 
 - Dùng Docker để tạo môi trường build sạch, tách biệt với máy host
+- Sử dụng OpenWRT SDK và toolchain để cross-compile ứng dụng cho ARM64
+- Dùng QEMU để mô phỏng thực thi binary ARM64 trên máy host x86_64
 - Quản lý mã nguồn bằng Git theo branch và tag
 - Viết Makefile để tự động hóa build/run/package
 - Hiểu cách đóng gói ứng dụng theo chuẩn OpenWRT
 
 ## Kết luận
 
-Dự án bao quát các bước cốt lõi của một chu trình phát triển embedded Linux: biên dịch, kiểm thử, quản lý version và đóng gói. Có thể mở rộng thêm sang cross-compiling, build `.ipk` thực tế và deploy lên thiết bị OpenWRT thật.
+Dự án bao quát các bước cốt lõi của một chu trình phát triển embedded Linux: cross-compile bằng OpenWRT SDK, mô phỏng thực thi bằng QEMU, quản lý version và đóng gói. Có thể mở rộng thêm sang build `.ipk` thực tế và deploy lên thiết bị OpenWRT thật.
 
 ## Link github
 https://github.com/DuongSlayer-Uet/Docker/tree/feature/python-version-check
