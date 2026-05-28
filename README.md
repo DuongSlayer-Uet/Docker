@@ -1,5 +1,8 @@
 # Python Version Checker
 
+## Link github
+https://github.com/DuongSlayer-Uet/Docker/tree/feature/python-version-check
+
 ## Giới thiệu
 
 Dự án mô phỏng quy trình phát triển một tiện ích userspace cho hệ thống Linux nhúng, cụ thể là theo hướng làm việc với OpenWRT trên Raspberry Pi 4B. Code viết bằng C, build trong Docker sử dụng **OpenWRT SDK** với toolchain cross-compile cho kiến trúc ARM64, dùng **QEMU** để chạy mô phỏng binary trên máy host x86_64, dùng Git để quản lý version và Makefile để tự động hóa các bước build/run/clean/package.
@@ -219,5 +222,4 @@ Thoát với exit code khác 0.
 
 Dự án bao quát các bước cốt lõi của một chu trình phát triển embedded Linux: cross-compile bằng OpenWRT SDK, mô phỏng thực thi bằng QEMU, quản lý version và đóng gói. Có thể mở rộng thêm sang build `.ipk` thực tế và deploy lên thiết bị OpenWRT thật.
 
-## Link github
-https://github.com/DuongSlayer-Uet/Docker/tree/feature/python-version-check
+
