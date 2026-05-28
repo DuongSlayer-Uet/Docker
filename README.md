@@ -182,6 +182,8 @@ git tag v1.0-python-check
 git push origin v1.0-python-check
 ```
 
+![Git push và tag thành công](images/github_upload.png)
+
 ## Kết quả mong đợi
 
 Chạy thành công:
@@ -192,6 +194,8 @@ Detected Python Version: 3.9.x
 
 Kết quả đồng thời được ghi vào `/tmp/python_ver.log`.
 
+![Kết quả khi tìm thấy Python 3.9](images/have_python_3_9.png)
+
 Không tìm thấy Python 3.9:
 
 ```
@@ -199,6 +203,8 @@ Error: Python 3.9 not found
 ```
 
 Thoát với exit code khác 0.
+
+![Kết quả khi không tìm thấy Python 3.9](images/no_pyhon3_9.png)
 
 ## Mục tiêu học tập
 
